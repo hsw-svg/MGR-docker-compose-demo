@@ -1,0 +1,155 @@
+version: "3.3"
+   
+services:
+  ruoyi-nacos:
+    container_name: ruoyi-nacos
+    image: nacos/nacos-server
+    build:
+      context: ./nacos
+      dockerfile: dockerfile
+    environment:
+      - MODE=standalone
+    volumes:
+      - ./nacos/logs/:/home/nacos/logs
+      - ./nacos/conf/application.properties:/home/nacos/conf/application.properties
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+      - "9849:9849"
+    depends_on:
+      - mysql-mgr-master
+    network_mode: "host"
+  mysql-mgr-master:
+    container_name: mysql-mgr-master
+    image: docker-compose-test-mysql-mgr-master
+    hostname: mysql-mgr-master
+    build:
+      context: ./mysql
+      dockerfile: dockerfile
+    ports:
+      - "13066:3306"
+    volumes:
+      - ./docker/mysql/scripts:/docker-entrypoint-initdb.d
+      - ./mysql/conf:/etc/mysql/conf.d
+      - ./mysql/logs:/logs
+      - ./mysql/data:/var/lib/mysql
+    privileged: true
+    command: [
+          'mysqld',
+          '--character-set-server=utf8mb4',
+          '--collation-server=utf8mb4_unicode_ci',
+          '--lower-case-table-names=1',
+          '--server-id=1',
+          '--gtid_mode=ON',
+          '--enforce_gtid_consistency=ON',
+          '--master_info_repository=TABLE',
+          '--relay_log_info_repository=TABLE',
+          '--binlog_checksum=NONE',
+          '--log_slave_updates=ON',
+          '--log-bin=mysql-mgr-master-bin',
+          '--binlog_format=ROW',
+          '--transaction_write_set_extraction=XXHASH64',
+          '--plugin_load_add=group_replication.so',
+          '--loose-group_replication_group_name=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          '--loose-group_replication_start_on_boot=off',
+          '--loose-group_replication_local_address=mysql-mgr-master:33061',
+          '--loose-group_replication_group_seeds=mysql-mgr-master:33061,mysql-mgr-slave1:33062,mysql-mgr-slave2:33063',
+          '--loose-group_replication_bootstrap_group=off',
+          '--loose-group_replication_single_primary_mode=off',
+          '--loose-group_replication_enforce_update_everywhere_checks=on',
+          '--sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'
+        ]
+    environment:
+      MYSQL_DATABASE: 'ry-cloud'
+      MYSQL_ROOT_PASSWORD: password
+      TZ: Asia/Shanghai
+  mysql-mgr-slave1:
+    container_name: mysql-mgr-slave1
+    image: docker-compose-test-mysql-mgr-slave1
+    hostname: mysql-mgr-slave1
+    build:
+      context: ./mysql
+      dockerfile: dockerfile
+    ports:
+      - "23066:3306"
+    volumes:
+      - ./docker/mysql/scripts:/docker-entrypoint-initdb.d
+      - ./mysql/conf:/etc/mysql/conf.d
+      - ./mysql/logs-slave1:/logs
+      - ./mysql/data-slave1:/var/lib/mysql
+    privileged: true
+    command: [
+          'mysqld',
+          '--character-set-server=utf8mb4',
+          '--collation-server=utf8mb4_unicode_ci',
+          '--lower-case-table-names=1',
+          '--server-id=2',
+          '--gtid_mode=ON',
+          '--enforce_gtid_consistency=ON',
+          '--master_info_repository=TABLE',
+          '--relay_log_info_repository=TABLE',
+          '--binlog_checksum=NONE',
+          '--log_slave_updates=ON',
+          '--log-bin=mysql-mgr-slave1-bin',
+          '--binlog_format=ROW',
+          '--transaction_write_set_extraction=XXHASH64',
+          '--plugin_load_add=group_replication.so',
+          '--loose-group_replication_group_name=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          '--loose-group_replication_start_on_boot=off',
+          '--loose-group_replication_local_address=mysql-mgr-slave1:33062',
+          '--loose-group_replication_group_seeds=mysql-mgr-master:33061,mysql-mgr-slave1:33062,mysql-mgr-slave2:33063',
+          '--loose-group_replication_bootstrap_group=off',
+          '--loose-group_replication_single_primary_mode=off',
+          '--loose-group_replication_enforce_update_everywhere_checks=on',
+          '--sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'
+        ]
+    environment:
+      MYSQL_DATABASE: 'ry-cloud'
+      MYSQL_ROOT_PASSWORD: password
+      TZ: Asia/Shanghai
+  mysql-mgr-slave2:
+    container_name: mysql-mgr-slave2
+    image: docker-compose-test-mysql-mgr-slave2
+    hostname: mysql-mgr-slave2
+    build:
+      context: ./mysql
+      dockerfile: dockerfile
+    ports:
+      - "33066:3306"
+    volumes:
+      - ./docker/mysql/scripts:/docker-entrypoint-initdb.d
+      - ./mysql/conf:/etc/mysql/conf.d
+      - ./mysql/logs-slave2:/logs
+      - ./mysql/data-slave-2:/var/lib/mysql
+    privileged: true
+    command: [
+          'mysqld',
+          '--character-set-server=utf8mb4',
+          '--collation-server=utf8mb4_unicode_ci',
+          '--lower-case-table-names=1',
+          '--server-id=3',
+          '--gtid_mode=ON',
+          '--enforce_gtid_consistency=ON',
+          '--master_info_repository=TABLE',
+          '--relay_log_info_repository=TABLE',
+          '--binlog_checksum=NONE',
+          '--log_slave_updates=ON',
+          '--log-bin=mysql-mgr-slave2-bin',
+          '--binlog_format=ROW',
+          '--transaction_write_set_extraction=XXHASH64',
+          '--plugin_load_add=group_replication.so',
+          '--loose-group_replication_group_name=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          '--loose-group_replication_start_on_boot=off',
+          '--loose-group_replication_local_address=mysql-mgr-slave2:33063',
+          '--loose-group_replication_group_seeds=mysql-mgr-master:33061,mysql-mgr-slave1:33062,mysql-mgr-slave2:33063',
+          # 开启引导模式,添加组成员，用于第一次搭建MGR或重建MGR的时候使用,只需要在集群内的其中一台开启
+          '--loose-group_replication_bootstrap_group=off',
+          # 是否启动单主模式，如果启动，则本实例是主库，提供读写，其他实例仅提供读,如果为off就是多主模式了
+          '--loose-group_replication_single_primary_mode=off',
+          # 多主模式下,强制检查每一个实例是否允许该操作,如果不是多主,可以关闭
+          '--loose-group_replication_enforce_update_everywhere_checks=on',
+          '--sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'
+        ]
+    environment:
+      MYSQL_DATABASE: 'ry-cloud'
+      MYSQL_ROOT_PASSWORD: password
